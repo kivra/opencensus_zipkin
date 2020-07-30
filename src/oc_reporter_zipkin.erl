@@ -37,29 +37,37 @@
          report/2]).
 
 init(Opts) ->
+    io:format("### oc_reporter_zipkin:init with ~p~n", [Opts]),
     Address = zipkin_address(Opts),
     LocalEndpoint = local_endpoint(Opts),
     {Address, LocalEndpoint}.
 
 report(Spans, {Address, LocalEndpoint}) ->
+    io:format("### oc_reporter_zipkin:report being called with ~p ~p~n", [Spans, {Address, LocalEndpoint}]),
     ZSpans = [zipkin_span(Span, LocalEndpoint) || Span <- Spans],
 
     try jsx:encode(ZSpans) of
         JSON ->
+            io:format("### oc_reporter_zipkin:report post JSON ~p~n", [JSON]),
             case httpc:request(post, {Address, [], "application/json", JSON}, [], []) of
                 {ok, {{_, 202, _}, _, _}} ->
+                    io:format("### oc_reporter_zipkin:report post returns 202~n"),
                     ok;
                 {ok, {{_, 200, _}, _, _}} ->
+                    io:format("### oc_reporter_zipkin:report post returns 200~n"),
                     ok;
                 {ok, {{_, Code, _}, _, Message}} ->
+                    io:format("### oc_reporter_zipkin:report post error ~p ~p~n", [Code, Message]),
                     ?LOG_ERROR("Zipkin: Unable to send spans, Zipkin reported an error: ~p : ~p",
                               [Code, Message]);
 
                 {error, Reason} ->
+                    io:format("### oc_reporter_zipkin:report post error ~p ~p~n", [Reason]),
                     ?LOG_ERROR("Zipkin: Unable to send spans, client error: ~p", [Reason])
             end
     catch
         error:Error ->
+            io:format("### oc_reporter_zipkin:report jsx:encode error ~p~n", [Error]),
             ?LOG_ERROR("Zipkin: Can't spans encode to json: ~p", [Error])
     end.
 
